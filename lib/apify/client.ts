@@ -32,7 +32,9 @@ export function createApifyClient(config: ApifyClientConfig) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...input,
+          searchTerms: input.searchStringsArray,
+          // The Actor returns places in pages of about 20 and rejects a lower maximum.
+          maxResultsPerSearch: Math.max(20, input.maxCrawledPlaces),
           timeoutSecs: 60,
         }),
         signal: controller.signal,
@@ -53,7 +55,19 @@ export function createApifyClient(config: ApifyClientConfig) {
         throw new ApifyError("Apify response is not an array of items");
       }
 
-      return data;
+      // Error and free-tier notice rows carry a message instead of a place.
+      const places = (data as ApifyGoogleMapsItem[]).filter(
+        (item) => !item.error_message && !item.free_tier_notice
+      );
+
+      if (places.length === 0 && data.length > 0) {
+        const row = data[0] as ApifyGoogleMapsItem;
+        throw new ApifyError(
+          `Apify returned no places: ${String(row.error_message ?? row.message)}`
+        );
+      }
+
+      return places;
     } catch (err) {
       clearTimeout(timeoutId);
 
@@ -79,7 +93,7 @@ export function createApifyClient(config: ApifyClientConfig) {
 
 export function getApifyConfig(): ApifyClientConfig {
   const token = process.env.APIFY_TOKEN;
-  const actorId = process.env.APIFY_ACTOR_ID ?? "apify/google-maps-scraper";
+  const actorId = process.env.APIFY_ACTOR_ID ?? "johnvc~google-maps-places-api";
 
   if (!token) {
     throw new ApifyError("APIFY_TOKEN is not configured");
