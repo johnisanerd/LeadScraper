@@ -13,10 +13,10 @@ export interface NormalizedProspect {
 export function normalizeApifyItem(item: ApifyGoogleMapsItem): NormalizedProspect {
   const company_name = sanitizeString(item.title ?? item.name);
   const address = sanitizeString(item.address);
-  const phone = sanitizeString(item.phone);
+  const phone = sanitizeString(item.phoneNumber ?? item.phone);
   const website = sanitizeWebsite(item.website);
-  const google_rating = normalizeNumber(item.totalScore ?? item.stars);
-  const review_count = normalizeInt(item.reviewsCount);
+  const google_rating = normalizeNumber(item.rating ?? item.totalScore ?? item.stars);
+  const review_count = normalizeInt(item.ratingCount ?? item.reviewsCount);
   const google_maps_url = sanitizeString(item.url);
 
   return {
